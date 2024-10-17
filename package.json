@@ -1,7 +1,9 @@
 {
   "name": "api.moneywise",
   "version": "1.0.0",
-  "main": "src/app.js",
+  "exports": {
+    ".": "./dist/app.js"
+  },
   "scripts": {
     "build": "npx tsc",
     "start": "node dist/app.js",
@@ -26,9 +28,13 @@
     "@types/dotenv": "^6.1.1",
     "@types/express": "^5.0.0",
     "@types/node": "^22.7.6",
+    "chalk": "4.0",
     "concurrently": "^9.0.1",
     "nodemon": "^3.1.7",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }
