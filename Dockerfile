@@ -16,6 +16,10 @@ RUN npm install
 # Copy the rest of the files to the app directory 
 COPY . /app
 
+# ENVIRONMENT VARIABLES
+
+ENV PORT=8080
+
 # Expose the port 8080
 EXPOSE 8080
 
