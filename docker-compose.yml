@@ -1,0 +1,22 @@
+services:
+  moneywise_db:
+    image: postgres:latest
+    container_name: moneywise_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: moneywise
+    ports:
+      - "5432:5432"
+    networks:
+      - moneywise-backend
+    volumes:
+      - moneywise_db_data:/var/lib/postgresql/data
+    
+
+volumes:
+  moneywise_db_data:
+
+networks:
+  moneywise-backend:
+    driver: bridge

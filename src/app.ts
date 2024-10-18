@@ -1,4 +1,4 @@
-import express, { Express, Request, Response } from "express";
+import express, { Express, Request, Response, NextFunction } from "express";
 import dotenv from "dotenv";
 import bodyParser from "body-parser";
 import chalk from "chalk";
@@ -8,6 +8,8 @@ dotenv.config();
 
 // Create a new express application instance
 const app: Express = express();
+// create a router for the api as base route
+const apiRouter = express.Router();
 // The port the express app will listen on
 const port: number = parseInt(process.env.PORT as string, 10) || 3000;
 
@@ -27,7 +29,7 @@ app.use((_, res: Response, next) => {
 });
 
 // create logger middleware to log the request method and url
-app.use((req: Request, res: Response, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   try {
     const time = new Date();
     req.on("close", () => {
@@ -45,11 +47,15 @@ app.use((req: Request, res: Response, next) => {
   }
 });
 
+// define a route handler for the api
+// * this route is the base route for all the api routes
+app.use("/api/v1", apiRouter);
+
 // define a route handler for the default home page
 // ? this route gives me 304 status code when I try to access it from the browser
 // ? it works fine when I try to access it from postman
 // ? I think it's because the response does not change so the browser caches it
-app.get("/", (_, res: Response) => {
+apiRouter.get("/", (_, res: Response) => {
   const serverStatus = {
     status: "running",
     message: "Hello world!",
@@ -61,7 +67,7 @@ app.get("/", (_, res: Response) => {
 
 // define a route handler for the health check
 // returns the uptime of the server
-app.get("/api/v1/health", async (_, res: Response) => {
+apiRouter.get("/health", async (_, res: Response) => {
   const healthCheck = {
     upTime: process.uptime(),
     status: "Ok",
@@ -71,13 +77,14 @@ app.get("/api/v1/health", async (_, res: Response) => {
   try {
     res.send(healthCheck);
   } catch (error) {
+    console.error(chalk.bgRed((error as Error).message));
     healthCheck.status = "Error";
     res.status(503).send(healthCheck);
   }
 });
 
 // create error handler middleware
-app.use((err: Error, req: Request, res: Response, next: Function) => {
+app.use((err: Error, req: Request, res: Response) => {
   console.error(chalk.bgRed(err.message));
   res.status(req.statusCode || 500).json({
     status: req.statusCode || 500,
@@ -91,6 +98,8 @@ app.use((_, res: Response) => {
   res.status(404).send("Not found");
 });
 
+// start the Express server
+// * listen on the port defined in the .env file
 app.listen(port, () => {
   console.log(
     chalk.black.magenta(`
