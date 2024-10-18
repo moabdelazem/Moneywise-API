@@ -47,6 +47,10 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   }
 });
 
+app.get("/", (_, res: Response) => {
+  res.send("Hello world!");
+});
+
 // define a route handler for the api
 // * this route is the base route for all the api routes
 app.use("/api/v1", apiRouter);
@@ -84,13 +88,9 @@ apiRouter.get("/health", async (_, res: Response) => {
 });
 
 // create error handler middleware
-app.use((err: Error, req: Request, res: Response) => {
+app.use((err: Error, _req: Request, res: Response) => {
   console.error(chalk.bgRed(err.message));
-  res.status(req.statusCode || 500).json({
-    status: req.statusCode || 500,
-    message: err.message,
-    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
-  });
+  res.status(500).send("Internal server error");
 });
 
 // define a route handler for the notfound
@@ -102,7 +102,7 @@ app.use((_, res: Response) => {
 // * listen on the port defined in the .env file
 app.listen(port, () => {
   console.log(
-    chalk.black.magenta(`
+    chalk.black.blueBright(`
  _____ ______   ________  ________   _______       ___    ___ ___       __   ___  ________  _______      
 |\\   _ \\  _   \\|\\   __  \\|\\   ___  \\|\\  ___ \\     |\\  \\  /  /|\\  \\     |\\  \\|\\  \\|\\   ____\\|\\  ___ \\     
 \\ \\  \\\\\\__\\ \\  \\ \\  \\|\\  \\ \\  \\\\ \\  \\ \\   __/|    \\ \\  \\/  / \\ \\  \\    \\ \\  \\ \\  \\ \\  \\___|\\ \\   __/|    
