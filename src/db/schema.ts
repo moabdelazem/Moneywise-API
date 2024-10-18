@@ -11,6 +11,8 @@ import { z } from "zod";
 
 // Email regex pattern for basic validation (RFC 5322 compliant)
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// date regex pattern for basic validation
 const dateRestriction = /^\d{4}-\d{2}-\d{2}$/; // date format: YYYY-MM-DD
 
 /* 
@@ -29,7 +31,7 @@ const dateRestriction = /^\d{4}-\d{2}-\d{2}$/; // date format: YYYY-MM-DD
  * - `hashed_password`: The hashed password for the user, with a maximum length of 255 characters.
  * - `created_at`: The timestamp when the user was created, with a default value of the current time.
  */
-const usersTable = pgTable("users", {
+export const usersTable = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   username: varchar("username", { length: 50 }).notNull().unique(),
   email: varchar("email", { length: 255 }).notNull().unique(),
@@ -48,6 +50,7 @@ export const createUserSchema = createInsertSchema(usersTable, {
   username: z.string().min(1).max(50),
   email: z.string().email().max(255).regex(emailRegex),
   hashedPassword: z.string().min(1).max(255),
+  monthlyIncome: z.number().positive(), 
 });
 
 /**
@@ -61,7 +64,7 @@ export const createUserSchema = createInsertSchema(usersTable, {
  * - `description`: A brief description of the expense, with a maximum length of 255 characters. This field is required.
  * - `date`: The date of the expense. This field is required.
  */
-const expensesTable = pgTable("expenses", {
+export const expensesTable = pgTable("expenses", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id")
     .notNull()
@@ -97,7 +100,7 @@ export const createExpenseSchema = createInsertSchema(expensesTable, {
  * - `categoryId`: A foreign key referencing the `id` field in the `categoriesTable`. This field is not nullable and has a cascade delete rule.
  * - `createdAt`: A timestamp indicating when the budget was created, with a default value of the current time.
  */
-const budgetsTable = pgTable("budget", {
+export const budgetsTable = pgTable("budget", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id")
     .notNull()
@@ -151,7 +154,7 @@ export const createCategorySchema = createInsertSchema(categoriesTable, {
  * - `dueDate`: A timestamp indicating the due date of the payment.
  *   This field is not nullable.
  */
-const paymentsTable = pgTable("payments", {
+export const paymentsTable = pgTable("payments", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id")
     .notNull()

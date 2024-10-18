@@ -6,7 +6,12 @@ import dotenv from "dotenv";
 // Load environment variables from .env file, where API keys and passwords are configured
 dotenv.config();
 
-export const db = drizzle(process.env.DATABASE_URL!);
+export const db = drizzle({
+  connection: {
+    connectionString: process.env.DATABASE_URL!,
+    ssl: false
+  }
+});
 
 // The port the express app will listen on
 const port: number = parseInt(process.env.PORT as string, 10) || 3000;
