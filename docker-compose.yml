@@ -9,14 +9,13 @@ services:
     ports:
       - "5432:5432"
     networks:
-      - moneywise-backend
+      - moneywise_backend
     volumes:
       - moneywise_db_data:/var/lib/postgresql/data
-    
 
 volumes:
   moneywise_db_data:
 
 networks:
-  moneywise-backend:
+  moneywise_backend:
     driver: bridge
