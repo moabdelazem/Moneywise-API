@@ -1,17 +1,42 @@
 import express, { Express, Request, Response, NextFunction } from "express";
-import dotenv from "dotenv";
 import bodyParser from "body-parser";
 import chalk from "chalk";
+import swaggerUi from "swagger-ui-express";
+import swaggerJSDoc from "swagger-jsdoc";
+import { db } from ".";
 
-// Load environment variables from .env file, where API keys and passwords are configured
-dotenv.config();
+// swagger options
+const swaggerOptions: swaggerJSDoc.Options = {
+  definition: {
+    openapi: "3.0.0",
+    info: {
+      title: "MoneyWise",
+      version: "1.0.0",
+      description: "MoneyWise API Documentation",
+      contact: {
+        name: "MoneyWise",
+        email: "mabdelazemahmed@gmail.com",
+      },
+    },
+    servers: [
+      {
+        url: "http://localhost:3000/api/v1",
+      },
+    ],
+  },
+  apis: ["./src/routes/*.ts"],
+};
+
+// swagger custom options
+const customOptions = {
+  customCss: ".swagger-ui .topbar { display: none }",
+  explorer: true,
+};
 
 // Create a new express application instance
-const app: Express = express();
+export const app: Express = express();
 // create a router for the api as base route
 const apiRouter = express.Router();
-// The port the express app will listen on
-const port: number = parseInt(process.env.PORT as string, 10) || 3000;
 
 // use the json parese middleware
 app.use(bodyParser.json());
@@ -27,6 +52,13 @@ app.use((_, res: Response, next) => {
   );
   next();
 });
+
+// enable swagger for the api
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerJSDoc(swaggerOptions), customOptions)
+);
 
 // create logger middleware to log the request method and url
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -70,7 +102,12 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 app.get("/", (_, res: Response) => {
-  res.send("Hello world!");
+  res.send(`
+    <div style="text-align: center;">
+      <h1>MoneyWise | This Service Is For Developers Only!</h1>
+      <p>If You See This API Is Working!</p>
+    </div>
+    `);
 });
 
 // define a route handler for the api
@@ -93,55 +130,42 @@ apiRouter.get("/", (_, res: Response) => {
 
 // define a route handler for the health check
 // returns the uptime of the server
-apiRouter.get("/health", async (_, res: Response) => {
+apiRouter.get("/health-check", async (_, res: Response) => {
   const healthCheck = {
     upTime: process.uptime(),
     status: "Ok",
     date: new Date(),
+    database: "Unknown",
   };
 
   try {
+    // Perform a simple query to check database connection
+    await db.execute("SELECT 1"); // Adjust the query to something supported by your DB
+
+    // If successful, update database status
+    healthCheck.database = "Connected";
     res.send(healthCheck);
   } catch (error) {
     console.error(chalk.bgRed((error as Error).message));
+
+    // Update health status to reflect the error
     healthCheck.status = "Error";
+    healthCheck.database = "Disconnected"; // Reflect DB issue if any
+
     res.status(503).send(healthCheck);
   }
 });
 
 // create error handler middleware
 app.use((err: Error, _req: Request, res: Response, next: NextFunction) => {
-  console.error(chalk.bgRed(err.message));
+  console.error(chalk.white.bgRed(err.message));
   res.status(500).send("Internal server error");
+  next();
 });
+
+// TODO: setting main routes
 
 // define a route handler for the notfound
 app.use((_, res: Response) => {
   res.status(404).send("Not found");
-});
-
-// start the Express server
-// * listen on the port defined in the .env file
-app.listen(port, () => {
-  console.log(
-    chalk.black.blueBright(`
- _____ ______   ________  ________   _______       ___    ___ ___       __   ___  ________  _______      
-|\\   _ \\  _   \\|\\   __  \\|\\   ___  \\|\\  ___ \\     |\\  \\  /  /|\\  \\     |\\  \\|\\  \\|\\   ____\\|\\  ___ \\     
-\\ \\  \\\\\\__\\ \\  \\ \\  \\|\\  \\ \\  \\\\ \\  \\ \\   __/|    \\ \\  \\/  / \\ \\  \\    \\ \\  \\ \\  \\ \\  \\___|\\ \\   __/|    
- \\ \\  \\\\|__| \\  \\ \\  \\\\\\  \\ \\  \\\\ \\  \\ \\  \\_|/__   \\ \\    / / \\ \\  \\  __\\ \\  \\ \\  \\ \\_____  \\ \\  \\_|/__  
-  \\ \\  \\    \\ \\  \\ \\  \\\\\\  \\ \\  \\\\ \\  \\ \\  \\_|\\ \\   \\/  /  /   \\ \\  \\|\\__\\_\\  \\ \\  \\|____|\\  \\ \\  \\_|\\ \\ 
-   \\ \\__\\    \\ \\__\\ \\_______\\ \\__\\\\ \\__\\ \\_______\\__/  / /      \\ \\____________\\ \\__\\____\\_\\  \\ \\_______\\
-    \\|__|     \\|__|\\|_______|\\|__| \\|__|\\|_______|\\___/ /        \\|____________|\\|__|\\_________\\|_______|
-                                                 \\|___|/                            \\|_________|         `)
-  );
-
-  console.log(
-    chalk.blueBright("App is running in ") +
-      chalk.yellow(process.env.NODE_ENV) +
-      chalk.blueBright(" mode")
-  );
-  console.log(
-    chalk.blueBright(`Server started at `) +
-      chalk.bgBlueBright(`http://127.0.0.1:${port}`)
-  );
 });
