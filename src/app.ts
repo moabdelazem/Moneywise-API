@@ -30,21 +30,43 @@ app.use((_, res: Response, next) => {
 
 // create logger middleware to log the request method and url
 app.use((req: Request, res: Response, next: NextFunction) => {
-  try {
-    const time = new Date();
-    req.on("close", () => {
-      // *calculate the duration of the request
-      const duration = new Date().getTime() - time.getTime();
-      console.log(
-        `${chalk.blue(req.method)} ${chalk.green(req.url)} - ${chalk.yellow(
-          res.statusCode.toString()
-        )} - ${chalk.magenta(duration + "ms")}`
-      );
-    });
-    next();
-  } catch (error) {
-    next(error);
-  }
+  const startTime = process.hrtime();
+
+  res.on("finish", () => {
+    // calculate the duration of the request
+    const [seconds, nanoseconds] = process.hrtime(startTime);
+    const duration = (seconds * 1e3 + nanoseconds / 1e6).toFixed(2); // Convert to milliseconds
+
+    // color the request method based on the method
+    let methodColor;
+    switch (req.method) {
+      case "GET":
+        methodColor = chalk.green;
+        break;
+      case "POST":
+        methodColor = chalk.blue;
+        break;
+      case "PUT":
+        methodColor = chalk.yellow;
+        break;
+      case "DELETE":
+        methodColor = chalk.red;
+        break;
+      default:
+        methodColor = chalk.white;
+    }
+
+    // log the request method, url, status code and duration
+    console.log(
+      `${methodColor(req.method)} - ${chalk.red(req.ip)} ${chalk.green(
+        req.originalUrl
+      )} - ${chalk.yellow(res.statusCode.toString())} - ${chalk.magenta(
+        duration + "ms"
+      )}`
+    );
+  });
+
+  next();
 });
 
 app.get("/", (_, res: Response) => {
@@ -88,7 +110,7 @@ apiRouter.get("/health", async (_, res: Response) => {
 });
 
 // create error handler middleware
-app.use((err: Error, _req: Request, res: Response) => {
+app.use((err: Error, _req: Request, res: Response, next: NextFunction) => {
   console.error(chalk.bgRed(err.message));
   res.status(500).send("Internal server error");
 });
@@ -114,11 +136,12 @@ app.listen(port, () => {
   );
 
   console.log(
-    chalk.green("App is running in ") +
+    chalk.blueBright("App is running in ") +
       chalk.yellow(process.env.NODE_ENV) +
-      chalk.magenta(" mode")
+      chalk.blueBright(" mode")
   );
   console.log(
-    chalk.green(`Server started at `) + chalk.bgGrey(`http://localhost:${port}`)
+    chalk.blueBright(`Server started at `) +
+      chalk.bgBlueBright(`http://127.0.0.1:${port}`)
   );
 });
