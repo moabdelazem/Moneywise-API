@@ -15,6 +15,17 @@ const port: number = parseInt(process.env.PORT as string, 10) || 3000;
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// enable cors for all requests
+app.use((_, res: Response, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+  next();
+});
+
 // create logger middleware to log the request method and url
 app.use((req: Request, res: Response, next) => {
   try {
@@ -69,7 +80,7 @@ app.get("/api/v1/health", async (_, res: Response) => {
 app.use((err: Error, req: Request, res: Response, next: Function) => {
   console.error(chalk.bgRed(err.message));
   res.status(req.statusCode || 500).json({
-    status: "error",
+    status: req.statusCode || 500,
     message: err.message,
     stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
   });
