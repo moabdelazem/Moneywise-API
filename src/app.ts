@@ -5,6 +5,7 @@ import swaggerUi from "swagger-ui-express";
 import swaggerJSDoc from "swagger-jsdoc";
 import { db } from ".";
 import { expensesRouter } from "./routes/expenses";
+import { authRouter } from "./routes/auth";
 
 // swagger options
 const swaggerOptions: swaggerJSDoc.Options = {
@@ -166,6 +167,9 @@ app.use((err: Error, _req: Request, res: Response, next: NextFunction) => {
 
 // TODO: setting main routes
 apiRouter.use("/expenses", expensesRouter);
+// ! this route is for testing purposes only
+// ! it should be removed in production
+apiRouter.use("/auth", authRouter);
 
 // define a route handler for the notfound
 app.use((_, res: Response) => {

@@ -43,7 +43,7 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Expense'
+ *
  *       500:
  *         description: Internal server error
  */
@@ -58,15 +58,11 @@
  *       required: true
  *       content:
  *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Expense'
  *     responses:
  *       201:
  *         description: The created expense
  *         content:
  *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Expense'
  *       500:
  *         description: Internal server error
  */
