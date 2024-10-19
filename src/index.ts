@@ -6,11 +6,12 @@ import dotenv from "dotenv";
 // Load environment variables from .env file, where API keys and passwords are configured
 dotenv.config();
 
+// create a new instance of the drizzle ORM with the connection string
 export const db = drizzle({
   connection: {
     connectionString: process.env.DATABASE_URL!,
-    ssl: false
-  }
+    ssl: false,
+  },
 });
 
 // The port the express app will listen on
@@ -40,4 +41,15 @@ app.listen(port, () => {
     chalk.blueBright(`Server started at `) +
       chalk.bgBlueBright(`http://127.0.0.1:${port}`)
   );
+
+  // Log the environment mode for the server
+  if (process.env.NODE_ENV === "development") {
+    console.log(chalk.greenBright("Development mode: Hot reloading enabled"));
+  } else if (process.env.NODE_ENV === "production") {
+    console.log(
+      chalk.redBright("Production mode: Performance optimizations enabled")
+    );
+  } else {
+    console.log(chalk.magentaBright(`Unknown mode: ${process.env.NODE_ENV}`));
+  }
 });

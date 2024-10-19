@@ -18,6 +18,7 @@ const dateRestriction = /^\d{4}-\d{2}-\d{2}$/; // date format: YYYY-MM-DD
 /* 
     !!!!!
         TODO: Still Creating the schema to assure the database is created correctly and being normalized
+        ? THIS COMMENT WILL BE REMOVED WHEN THE SCHEMA IS ASSURED THAT IT IS CORRECT
     !!!!!
 */
 
@@ -50,7 +51,7 @@ export const createUserSchema = createInsertSchema(usersTable, {
   username: z.string().min(1).max(50),
   email: z.string().email().max(255).regex(emailRegex),
   hashedPassword: z.string().min(1).max(255),
-  monthlyIncome: z.number().positive(), 
+  monthlyIncome: z.number().positive(),
 });
 
 /**

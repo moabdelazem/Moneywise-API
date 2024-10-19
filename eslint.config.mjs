@@ -31,6 +31,7 @@ export default [
         "warn",
         { vars: "all", args: "after-used", ignoreRestSiblings: false },
       ],
+      "@typescript-eslint/no-explicit-any": "off",
     },
   },
 ];

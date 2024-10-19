@@ -4,6 +4,7 @@ import chalk from "chalk";
 import swaggerUi from "swagger-ui-express";
 import swaggerJSDoc from "swagger-jsdoc";
 import { db } from ".";
+import { expensesRouter } from "./routes/expenses";
 
 // swagger options
 const swaggerOptions: swaggerJSDoc.Options = {
@@ -20,7 +21,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
     },
     servers: [
       {
-        url: "http://localhost:3000/api/v1",
+        url: "http://localhost:8080/api/v1",
       },
     ],
   },
@@ -164,6 +165,7 @@ app.use((err: Error, _req: Request, res: Response, next: NextFunction) => {
 });
 
 // TODO: setting main routes
+apiRouter.use("/expenses", expensesRouter);
 
 // define a route handler for the notfound
 app.use((_, res: Response) => {
