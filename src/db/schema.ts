@@ -54,6 +54,11 @@ export const createUserSchema = createInsertSchema(usersTable, {
   monthlyIncome: z.number().positive(),
 });
 
+// login zod schema for the user
+export const loginUserSchema = z.object({
+  username: z.string().min(1).max(50),
+  password: z.string().min(1).max(255),
+});
 /**
  * Defines the schema for the "expenses" table in the database.
  *

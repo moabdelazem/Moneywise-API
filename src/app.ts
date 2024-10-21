@@ -6,6 +6,7 @@ import swaggerJSDoc from "swagger-jsdoc";
 import { db } from ".";
 import { expensesRouter } from "./routes/expenses";
 import { authRouter } from "./routes/auth";
+import errorHandler from "./middlewares/errorHandler";
 
 // swagger options
 const swaggerOptions: swaggerJSDoc.Options = {
@@ -159,11 +160,7 @@ apiRouter.get("/health-check", async (_, res: Response) => {
 });
 
 // create error handler middleware
-app.use((err: Error, _req: Request, res: Response, next: NextFunction) => {
-  console.error(chalk.white.bgRed(err.message));
-  res.status(500).send("Internal server error");
-  next();
-});
+app.use(errorHandler);
 
 // TODO: setting main routes
 apiRouter.use("/expenses", expensesRouter);
