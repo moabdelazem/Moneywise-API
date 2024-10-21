@@ -2,24 +2,20 @@ import { Request, Response } from "express";
 import { db } from "..";
 import { expensesTable } from "../db/schema";
 import { StatusCodes } from "http-status-codes";
-import { eq } from "drizzle-orm";
-
-/* 
-    ? We need to generate tokens for the user to authenticate the requests
-    ? user can not query the expenses without being authenticated with a token
-    ? This will be next task to implement
-    ! For Now Any User Can Do Anything!!! => NO AUTHENTICATION IMPELEMENTED YET
-*/
+import { and, eq } from "drizzle-orm";
 
 /* 
     getExpensesFromDB function
     - Fetch all expenses from the database
     - Respond with the expenses
 */
-async function getExpensesFromDB() {
+async function getExpensesFromDB(userId: string) {
   try {
     // Get all expenses from the database
-    const result = await db.select().from(expensesTable);
+    const result = await db
+      .select()
+      .from(expensesTable)
+      .where(eq(expensesTable.userId, userId));
     return result;
   } catch (error) {
     console.error("Error fetching expenses from the database:", error);
@@ -27,13 +23,13 @@ async function getExpensesFromDB() {
   }
 }
 
-async function getExpenseWithIdFromDB(id: string) {
+async function getExpenseWithIdFromDB(id: string, userId: string) {
   try {
     // Get the expense from the database
     const result = await db
       .select()
       .from(expensesTable)
-      .where(eq(expensesTable.id, id));
+      .where(and(eq(expensesTable.id, id), eq(expensesTable.userId, userId)));
     return result;
   } catch (error) {
     console.error("Error fetching expense from the database:", error);
@@ -46,7 +42,11 @@ async function getExpenseWithIdFromDB(id: string) {
     - Create a new expense in the database
     - Respond with the created expense
 */
-async function createExpenseInDB(expenseReq: Request["body"]) {
+async function createExpenseInDB(expenseReq: Request["body"], userId: string) {
+  // Check if the user is logged in
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
   try {
     // Create a new expense in the database
     const result = await db
@@ -67,8 +67,9 @@ async function createExpenseInDB(expenseReq: Request["body"]) {
 //  - Fetch all expenses from the database
 //  - Respond with a JSON object containing the expenses
 export const getExpenses = async (req: Request, res: Response) => {
+  const userId = req.userId as string;
   try {
-    const expenses = await getExpensesFromDB();
+    const expenses = await getExpensesFromDB(userId);
     res.status(StatusCodes.OK).json({ expenses });
   } catch (error) {
     console.error("Error fetching expenses:", error);
@@ -84,9 +85,10 @@ export const getExpenses = async (req: Request, res: Response) => {
 export const getExpense = async (req: Request, res: Response) => {
   // Extract the id from the request parameters
   const { id } = req.params;
+  const userId = req.userId as string;
 
   try {
-    const expense = await getExpenseWithIdFromDB(id);
+    const expense = await getExpenseWithIdFromDB(id, userId);
     res.status(StatusCodes.OK).json({ expense });
   } catch (error) {
     console.error("Error fetching expense:", error);
@@ -102,10 +104,11 @@ export const getExpense = async (req: Request, res: Response) => {
 export const createExpense = async (req: Request, res: Response) => {
   // Extract the expense details from the request body
   const expenseReq = req.body;
+  const userId = req.userId as string;
 
   // Try to create the expense in the database
   try {
-    const result = await createExpenseInDB(expenseReq);
+    const result = await createExpenseInDB(expenseReq, userId);
     res.status(StatusCodes.CREATED).json(result);
   } catch (error) {
     console.error("Error creating expense:", error);
@@ -123,10 +126,13 @@ export const createExpense = async (req: Request, res: Response) => {
 export const deleteExpense = async (req: Request, res: Response) => {
   // Extract the id from the request parameters
   const { id } = req.params;
+  const userId = req.userId as string;
 
   try {
     // Delete the expense from the database
-    await db.delete(expensesTable).where(eq(expensesTable.id, id));
+    await db
+      .delete(expensesTable)
+      .where(and(eq(expensesTable.id, id), eq(expensesTable.userId, userId)));
     res.status(StatusCodes.NO_CONTENT).send();
   } catch (error) {
     console.error("Error deleting expense from the database:", error);
