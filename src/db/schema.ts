@@ -36,7 +36,7 @@ export const usersTable = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   username: varchar("username", { length: 50 }).notNull().unique(),
   email: varchar("email", { length: 255 }).notNull().unique(),
-  hashedPassword: varchar("hashed_password", { length: 255 }).notNull(),
+  hashedPassword: varchar("password", { length: 255 }).notNull(),
   createdAt: timestamp("created_at").default(sql`now()`),
   monthlyIncome: numeric("monthly_income", {
     precision: 10,
