@@ -36,7 +36,7 @@ export const usersTable = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   username: varchar("username", { length: 50 }).notNull().unique(),
   email: varchar("email", { length: 255 }).notNull().unique(),
-  hashedPassword: varchar("password", { length: 255 }).notNull(),
+  password: varchar("password", { length: 255 }).notNull(),
   createdAt: timestamp("created_at").default(sql`now()`),
   monthlyIncome: numeric("monthly_income", {
     precision: 10,
@@ -50,7 +50,7 @@ export const usersTable = pgTable("users", {
 export const createUserSchema = createInsertSchema(usersTable, {
   username: z.string().min(1).max(50),
   email: z.string().email().max(255).regex(emailRegex),
-  hashedPassword: z.string().min(1).max(255),
+  password: z.string().min(1).max(255),
   monthlyIncome: z.number().positive(),
 });
 

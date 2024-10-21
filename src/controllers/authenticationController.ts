@@ -4,50 +4,77 @@ import { db } from "..";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
+type NewUser = typeof usersTable.$inferInsert;
+
+// getUserFromDB function
+// - Fetch the user from the database using the email
+// - Return the user if found
+const getUserFromDB = async (email: string) => {
+  try {
+    const user = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, email));
+
+    return user;
+  } catch (error) {
+    console.error("Error fetching user from the database:", error);
+    throw new Error("Could not fetch user");
+  }
+};
+
+// registerUser function
+// - Hash the user's password
+// - Insert the user into the database
+const registerUser = async (user: NewUser) => {
+  try {
+    // Hash the user's password
+    const hashedPassword = await bcrypt.hash(user.password, 10);
+
+    // Insert the user into the database
+    const newUser = await db
+      .insert(usersTable)
+      .values({
+        ...user,
+        password: hashedPassword,
+      })
+      .returning();
+
+    return newUser;
+  } catch (error) {
+    console.error("Error inserting user into the database:", error);
+    throw new Error("Could not insert user");
+  }
+};
+
 // createUserController function
 // - Create a new user in the database
 // - Respond with the created user
 // - If the user already exists, return an error
 export const createUserController = async (req: Request, res: Response) => {
-  const { username, email, hashedPassword, monthlyIncome } = req.body;
+  // Get the user data from the request body
+  const { username, email, password, monthlyIncome } = req.body;
 
+  // Check if the user already exists in the database
+  const userExists = await getUserFromDB(email);
+
+  // If the user already exists, return an error
+  if (userExists.length > 0) {
+    res.status(400).json({ error: "User already" });
+  }
+
+  // if the user does not exist, create a new user
   try {
-    // Check if the user already exists
-    const userExists = await db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.email, email));
+    const newUser = await registerUser({
+      username,
+      email,
+      password,
+      monthlyIncome,
+    });
 
-    // If the user already exists, return an error
-    if (userExists.length > 0) {
-      res.status(400).json({ error: "User already exists" });
-    }
-
-    // Validate the input
-    if (!username || !email || !hashedPassword || !monthlyIncome) {
-      res.status(400).json({ error: "All fields are required" });
-    }
-
-    // Enhance the hash by adding a salt and hashing the password
-    const saltRounds = 12;
-    const fullHashedPassword = await bcrypt.hash(hashedPassword, saltRounds);
-
-    // Create the user in the database
-    const newUser = await db
-      .insert(usersTable)
-      .values({
-        username,
-        email,
-        hashedPassword: fullHashedPassword,
-        monthlyIncome: monthlyIncome,
-      })
-      .returning();
-
-    // Respond with the created user
-    res.status(201).json({ user: newUser[0] });
+    res.status(201).json({ user: newUser });
   } catch (error) {
-    console.error("Error creating user in the database:", error);
-    res.status(500).json({ error: "Could not create user" });
+    res.status(500).json({ error: (error as Error).message });
   }
 };
 
