@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { usersTable } from "../db/schema";
 import { db } from "..";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { StatusCodes } from "http-status-codes";
 import jwt from "jsonwebtoken";
@@ -10,21 +10,34 @@ import jwt from "jsonwebtoken";
 type NewUser = typeof usersTable.$inferInsert;
 
 /**
- * ! This function is not yet correct. There is something wrong with the way it behave.
- * ? we need to fix this function to make it work correctly
- * Retrieves a user from the database based on the provided username.
+ * Checks if a user with the given username and email exists in the database.
  *
- * @param username - The username of the user to retrieve.
- * @returns A promise that resolves to the user object if found, or an Error if the user is not found.
+ * @param username - The username to check for.
+ * @param email - The email to check for.
+ * @returns A promise that resolves to the user object if found, or an error if the user is not found.
  */
-const getUserFromDB = async (username: string) => {
+const checkIfUserExists = async (username: string, email: string) => {
   const user = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.username, username))
-    .limit(1);
+    .where(or(eq(usersTable.username, username), eq(usersTable.email, email)));
 
-  return user.length ? user[0] : new Error("User not found");
+  return user.length > 0;
+};
+
+/**
+ * Checks if a user exists with the given username.
+ *
+ * @param username - The username to check for existence.
+ * @returns A promise that resolves to a boolean indicating whether the user exists.
+ */
+const checkIfUserExistsWithUsername = async (username: string) => {
+  const user = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.username, username));
+
+  return user;
 };
 
 /**
@@ -36,28 +49,18 @@ const getUserFromDB = async (username: string) => {
  */
 const registerUser = async (user: NewUser) => {
   try {
-    // Hash the user's password
-    const hashedPassword = await bcrypt.hash(user.password, 10);
-
-    // Insert the new user into the database
-    const newUser = await db
+    // hash the user's password and then insert the user into the database
+    const [newUser] = await db
       .insert(usersTable)
       .values({
         ...user,
-        password: hashedPassword,
+        password: await bcrypt.hash(user.password, 10),
       })
       .returning();
-
     return newUser;
   } catch (error) {
-    // Log the error for debugging purposes
     console.error("Error registering user:", error);
-
-    // Enhance the error message
-    (error as Error).message = "Could not register user";
-
-    // Pass the error to the middleware
-    throw error;
+    throw new Error("Could not register user");
   }
 };
 
@@ -75,53 +78,55 @@ const registerUser = async (user: NewUser) => {
  * @throws Will respond with a 500 status code and an error message if an unexpected error occurs.
  */
 export const createUserController = async (req: Request, res: Response) => {
+  // Extract the user details from the request body
+  const { username, email, password, monthlyIncome } = req.body;
+
   try {
-    // Extract the user details from the request body
-    const { username, email, password, monthlyIncome } = req.body;
-
-    // Check if the user already exists in the database
-    const userExists = await getUserFromDB(username);
-
-    // Check if the email already exists in the database
-    const emailExists = await db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.email, email))
-      .limit(1);
-
-    // If the email already exists, return a 409 Conflict
-    if (emailExists.length) {
-      res.status(StatusCodes.CONFLICT).json({ error: "Email already exists" });
+    // Validate input fields
+    if (!username || !email || !password || !monthlyIncome) {
+      res
+        .status(StatusCodes.BAD_REQUEST)
+        .json({ error: "All fields are required" });
       return;
     }
 
+    // Check if the user already exists
+    const userExists = await checkIfUserExists(username, email);
+
     // If the user already exists, return a 409 Conflict response
-    if (typeof userExists !== "undefined" && !(userExists instanceof Error)) {
+    if (userExists) {
       res.status(StatusCodes.CONFLICT).json({ error: "User already exists" });
       return;
     }
 
-    // Register the new user
-    const newUser = await registerUser({
+    // Hash the user's password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create the new user object
+    const newUser: NewUser = {
       username,
       email,
-      password,
+      password: hashedPassword,
       monthlyIncome,
-    });
+    };
 
-    // Generate a JWT token for the new user
-    const token = jwt.sign(
-      { email: email, username: username, id: newUser[0].id },
+    // Register the new user
+    const user = await registerUser(newUser);
+
+    // Generate a JWT token for the user
+    const userToken = jwt.sign(
+      { id: user.id, username: user.username },
       process.env.JWT_SECRET as string,
-      { expiresIn: "1h" }
+      { expiresIn: "1h" } // Token expires in 1 hour
     );
 
-    // Return a 201 Created response with the new user object
-    res.status(StatusCodes.CREATED).json({ userId: newUser[0].id, token });
+    // Respond with the new user and token
+    res.status(StatusCodes.CREATED).json({ user, token: userToken });
   } catch (error) {
+    console.error("Error creating user:", error);
     res
       .status(StatusCodes.INTERNAL_SERVER_ERROR)
-      .json({ error: (error as Error).message });
+      .json({ error: "Could not create user" });
   }
 };
 
@@ -144,40 +149,43 @@ export const loginUserController = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  // Extract the username and password from the request body
   const { username, password } = req.body;
 
-  // Fetch the user from the database
-  const user = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.username, username))
-    .limit(1);
+  try {
+    // Check if the user exists
+    const user = await checkIfUserExistsWithUsername(username);
+    if (!user) {
+      res
+        .status(StatusCodes.UNAUTHORIZED)
+        .json({ error: "Invalid username or password" });
+      return;
+    }
 
-  // If the user does not exist, return a 401 Unauthorized response
-  if (!user.length) {
-    res.status(StatusCodes.UNAUTHORIZED).json({ error: "Invalid credentials" });
-    return;
+    // Check if the passowrd is correct
+    const passwordMatch = await bcrypt.compare(password, user[0].password);
+
+    // If the password does not match, return a 401 Unauthorized response
+    if (!passwordMatch) {
+      res
+        .status(StatusCodes.UNAUTHORIZED)
+        .json({ error: "Invalid username or password" });
+      return;
+    }
+
+    // Generate a JWT token for the user
+    const userToken = jwt.sign(
+      { userId: user[0].id, username: user[0].username },
+      process.env.JWT_SECRET as string
+    );
+
+    // Respond with the new user and token
+    res.status(StatusCodes.CREATED).json({ user, token: userToken });
+  } catch (error) {
+    console.error("Error logging in user:", error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      error: "Could not log in user",
+    });
   }
-
-  // Compare the password from the request body with the hashed password from the database
-  const isPasswordValid = await bcrypt.compare(password, user[0].password);
-
-  // If the passwords do not match, return a 401 Unauthorized response
-  if (!isPasswordValid) {
-    res.status(StatusCodes.UNAUTHORIZED).json({ error: "Invalid credentials" });
-    return;
-  }
-
-  // Generate a JWT token for the new user
-  const token = jwt.sign(
-    { email: user[0].email, username: user[0].username, id: user[0].id },
-    process.env.JWT_SECRET as string,
-    { expiresIn: "1h" }
-  );
-
-  // Return a 201 Created response with the new user object
-  res.status(StatusCodes.CREATED).json({ userId: user[0].id, token });
 };
 
 /**
