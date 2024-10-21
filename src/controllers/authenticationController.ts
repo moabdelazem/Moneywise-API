@@ -4,6 +4,7 @@ import { db } from "..";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { StatusCodes } from "http-status-codes";
+import jwt from "jsonwebtoken";
 
 // Infer the type of the user object from the usersTable
 type NewUser = typeof usersTable.$inferInsert;
@@ -108,8 +109,15 @@ export const createUserController = async (req: Request, res: Response) => {
       monthlyIncome,
     });
 
+    // Generate a JWT token for the new user
+    const token = jwt.sign(
+      { email: email, username: username, id: newUser[0].id },
+      process.env.JWT_SECRET as string,
+      { expiresIn: "1h" }
+    );
+
     // Return a 201 Created response with the new user object
-    res.status(StatusCodes.CREATED).json({ user: newUser });
+    res.status(StatusCodes.CREATED).json({ userId: newUser[0].id, token });
   } catch (error) {
     res
       .status(StatusCodes.INTERNAL_SERVER_ERROR)
@@ -161,8 +169,15 @@ export const loginUserController = async (
     return;
   }
 
-  // Return a 200 OK response with the user object
-  res.status(StatusCodes.OK).json({ user: user[0] });
+  // Generate a JWT token for the new user
+  const token = jwt.sign(
+    { email: user[0].email, username: user[0].username, id: user[0].id },
+    process.env.JWT_SECRET as string,
+    { expiresIn: "1h" }
+  );
+
+  // Return a 201 Created response with the new user object
+  res.status(StatusCodes.CREATED).json({ userId: user[0].id, token });
 };
 
 /**

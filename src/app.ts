@@ -7,6 +7,7 @@ import { db } from ".";
 import { expensesRouter } from "./routes/expenses";
 import { authRouter } from "./routes/auth";
 import errorHandler from "./middlewares/errorHandler";
+import { isAuth } from "./middlewares/isAuth";
 
 // swagger options
 const swaggerOptions: swaggerJSDoc.Options = {
@@ -163,7 +164,7 @@ apiRouter.get("/health-check", async (_, res: Response) => {
 app.use(errorHandler);
 
 // TODO: setting main routes
-apiRouter.use("/expenses", expensesRouter);
+apiRouter.use("/expenses", isAuth, expensesRouter);
 // ! this route is for testing purposes only
 // ! it should be removed in production
 apiRouter.use("/auth", authRouter);
